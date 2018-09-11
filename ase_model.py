@@ -35,8 +35,10 @@ for k in (0, 1, 2, 3):
         for kp in False, True:
 
             if k < 3:
+                # MIG/PIG/CIG models
                 dx = da.loc[da.Icode == k, :]
             else:
+                # MIG+PIG model
                 dx = da.loc[da.Icode.isin([0, 1]), :]
 
             if ks:
@@ -54,8 +56,10 @@ for k in (0, 1, 2, 3):
             fml = "Imprinted ~ AvgNonAltFreq + C(Lib) + Batch + Boy + KidRank + BirthLength_cen + BirthWeight_cen + RIN + PctchrM_TPMsum + C(GeneClass_c1_lnc2_nc3)"
 
             if kp:
+                # Add placenta weight to some models
                 fml += " + PlacentaWeight_cen"
 
+            # Variance terms
             vc_fml = OrderedDict([
                 ("Person", "0 + C(Person)"),
                 ("Sample", "0 + C(Sample)"),
@@ -64,6 +68,7 @@ for k in (0, 1, 2, 3):
             ])
 
             if k == 3:
+                # Extra terms for MIG+PIG model
                 fml += " + Pat"
                 fml = fml.replace("Pat", "Pat01")
                 fml = fml.replace("C(Lib)", "C(Lib)*Pat01")
@@ -73,20 +78,25 @@ for k in (0, 1, 2, 3):
             else:
                 dy = dx
 
+            # This is the final data set
             dy = dy.dropna()
 
+            # Create some centered variables
             dy["BirthLength_cen"] = dy.BirthLength - dy.BirthLength.mean()
             dy["BirthWeight_cen"] = dy.BirthWeight - dy.BirthWeight.mean()
 
+            # Write out gene-level info
             info.write("Genes:\n")
             for ky, va in dy.groupby("Gene"):
                 info.write("%s,%d\n" % (ky, va.shape[0]))
 
+            # Write out sample-level info
             info.write("\nSamples:\n")
             for ky, va in dy.groupby("Sample"):
                 info.write("%s,%d\n" % (ky, va.shape[0]))
 
             if kp:
+                # Center placenta weight if we are using it
                 dy["PlacentaWeight_cen"] = dy.PlacentaWeight - dy.PlacentaWeight.mean()
 
             if k != 3:
@@ -94,6 +104,8 @@ for k in (0, 1, 2, 3):
                     fml, vc_fml, dy, vcp_p=3, fe_p=3)
 
             else:
+                # Design matrices for MIG+PIG model can't be constructed with
+                # formulas, need to do it manually
                 ident = []
                 exog_vc = []
 
@@ -131,7 +143,8 @@ for k in (0, 1, 2, 3):
                     fe_p=3,
                     vcp_names=vcp_names)
 
-            rslt = model.fit_map(minim_opts={"maxiter": 1000})
+            # Not sure this is needed
+            #rslt = model.fit_map(minim_opts={"maxiter": 1000})
 
             if k != 3:
                 model2 = BinomialBayesMixedGLM.from_formula(
@@ -163,6 +176,8 @@ for k in (0, 1, 2, 3):
                 continue
 
             if not ks:
+                # Save BLUPs
+
                 rr = rslt2.random_effects("Gene")
                 rr = rr.sort_values(by="SD")
                 rr["N"] = [np.sum(dx.Gene == x[8:-1]) for x in rr.index]
