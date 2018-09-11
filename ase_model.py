@@ -20,7 +20,9 @@ da, genecode, exoncode = get_data(method)
 da.BirthWeight /= 1000
 da.PlacentaWeight /= 1000
 
+info = open("model_%d_info.csv" % method, "w")
 out = open("model_%d.txt" % method, "w")
+
 out.write("```\n")
 
 # Imprinting code
@@ -75,6 +77,14 @@ for k in (0, 1, 2, 3):
 
             dy["BirthLength_cen"] = dy.BirthLength - dy.BirthLength.mean()
             dy["BirthWeight_cen"] = dy.BirthWeight - dy.BirthWeight.mean()
+
+            info.write("Genes:\n")
+            for ky, va in dy.groupby("Gene"):
+                info.write("%s,%d\n" % (ky, va.shape[0]))
+
+            info.write("\nSamples:\n")
+            for ky, va in dy.groupby("Sample"):
+                info.write("%s,%d\n" % (ky, va.shape[0]))
 
             if kp:
                 dy["PlacentaWeight_cen"] = dy.PlacentaWeight - dy.PlacentaWeight.mean()
@@ -138,8 +148,7 @@ for k in (0, 1, 2, 3):
 
             rslt2 = model2.fit_vb(verbose=False, scale_fe=True)
 
-            out.write(["Maternal", "Paternal", "Complex", "Maternal+Paternal"
-                       ][k] + " imprinted genes:\n")
+            out.write(["Maternal", "Paternal", "Complex", "Maternal+Paternal"][k] + " imprinted genes:\n")
             if ks:
                 out.write("Retaining one kid per sibship\n")
             out.write("%d people\n" % dy.Person.unique().size)
@@ -220,3 +229,5 @@ for k in (0, 1, 2, 3):
 
 out.write("```\n")
 out.close()
+
+info.close()
