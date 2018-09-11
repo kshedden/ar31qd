@@ -74,10 +74,8 @@ for run,df1 in df.groupby("RNAid"):
             ase = (1 - np.sqrt(1 - 4*ase)) / 2
         ase = 0.5 - ase
 
-        # Concatenate the gene ids for each SNP
-        gene = df2["Gene_Symbol"].iloc[0]
-
         # Prepare an output record
+        gene = df2["Gene_Symbol"].iloc[0]
         anaf = df2.aveNonAltFreq.iloc[0]
         icr = df2.ICR.iloc[0]
         pweight = df2["Placenta_Weight"].iloc[0]
