@@ -15,8 +15,14 @@ pct = 10
 # 0=gene/sample masking, 1=sample masking
 method = int(sys.argv[1])
 
-# Imprinting code variable
+# Imprinting code variable name
 code = "Comb_Imp_Code_PlacPolGene"
+
+# Gene symbol variable name, can contain multiple genes joined with semi-colon
+gene_symbol = "Gene_Symbol_PlacPolGene"
+
+# Exon symbol variable name, can contain multiple names joined with semi-colon
+exon_symbol = "mergedExons_PolishGeneSelection"
 
 df = pd.read_csv(os.path.join(dpr, fname), delimiter="\t")
 
@@ -44,22 +50,46 @@ print("Size after masking for maternal contamination:")
 print(df.shape)
 
 df["icode"] = df[code]
-df["exon"] = df["mergedExons_PolishGeneSelection"] + df.strand
+
+# Add the strand identifier to the exon name
+df["exon"] = df[exon_symbol] + df.strand
+
+# Drop of exon name is missing
+df = df.loc[pd.notnull(df.exon), :]
+
+# Get all the distinct exons from the combined exon names
+exons_unique = set([])
+for ex in df.exon:
+    if pd.isnull(ex):
+        continue
+    for u in ex.split(":"):
+        exons_unique.add(u)
+exons_unique = list(exons_unique)
 
 da = []
 for run,df1 in df.groupby("RNAid"):
-    for exon,df2 in df1.groupby("exon"):
+    for exon in exons_unique:
 
+        # Get the data for one sample, one exon
+        df2 = df1.loc[df1.exon.str.contains(exon), :]
+        if df2.shape[0] == 0:
+            continue
+
+        # Get the person ID for this RNAid value.  There should only be one
+        # person per RNAid.
         person = df2["DNAid"].unique()
         if len(person) > 1:
             1/0
         person = person[0]
 
+        # Get the sample source for this RNAid value.  There should only be one
+        # sample source per RNAid.
         sample = df2["Sample_source"].unique()
         if len(sample) > 1:
             1/0
         sample = sample[0]
 
+        # Calculate the imprinting status.
         x = np.asarray(df2.refCount)
         y = np.asarray(df2.altCount)
         z = x + y
@@ -75,7 +105,7 @@ for run,df1 in df.groupby("RNAid"):
         ase = 0.5 - ase
 
         # Prepare an output record
-        gene = df2["Gene_Symbol"].iloc[0]
+        gene = df2[gene_symbol].iloc[0]
         anaf = df2.aveNonAltFreq.iloc[0]
         icr = df2.ICR.iloc[0]
         pweight = df2["Placenta_Weight"].iloc[0]
