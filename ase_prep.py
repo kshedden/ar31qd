@@ -30,6 +30,7 @@ exon_symbol = "mergedExons_PolishGeneSelection"
 df = pd.read_csv(os.path.join(dpr, fname), delimiter="\t")
 
 df = df.rename(columns={"%chrM_TPMsum": "PctchrM_TPMsum"})
+df[gene_type] = pd.to_numeric(df[gene_type], errors='coerce')
 
 def nmsg(df):
     print("  %d data points" % df.shape[0])
@@ -75,8 +76,6 @@ exons_unique = set([])
 for ex in df.exon:
     if pd.isnull(ex):
         continue
-    if ":" in ex:
-        1/0
     for u in ex.split(":"):
         exons_unique.add(u)
 exons_unique = list(exons_unique)
