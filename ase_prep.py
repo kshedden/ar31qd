@@ -21,6 +21,9 @@ code = "Comb_Imp_Code_PlacPolGene"
 # Gene symbol variable name, can contain multiple genes joined with semi-colon
 gene_symbol = "Gene_Symbol_PlacPolGene"
 
+# Require gene type to be 1, 2, 3
+gene_type = "GeneClass_c1_lnc2_nc3"
+
 # Exon symbol variable name, can contain multiple names joined with semi-colon
 exon_symbol = "mergedExons_PolishGeneSelection"
 
@@ -28,26 +31,36 @@ df = pd.read_csv(os.path.join(dpr, fname), delimiter="\t")
 
 df = df.rename(columns={"%chrM_TPMsum": "PctchrM_TPMsum"})
 
+def nmsg(df):
+    print("  %d data points" % df.shape[0])
+    print("  %d people" % df.DNAid.unique().size)
+    print("  %d samples" % df.RNAid.unique().size)
+
 print("Initial data set size:")
-print(df.shape)
+nmsg(df)
 
 df = df.loc[df.totalCount >= 10, :]
 print("Size after requiring at least 10 reads:")
-print(df.shape)
+nmsg(df)
 
 df = df.loc[df[code] <= 2, :]
 print("Size after requiring imprinting code <= 2:")
-print(df.shape)
+nmsg(df)
+
+df = df.loc[df[gene_type].isin([1, 2, 3]), :]
+print("Size after requiring gene_type in 1, 2, 3:")
+nmsg(df)
+
 
 if method == 0:
     dd = df.DiscardIf1_method4.astype(str)
-    ii = ~(dd.str.contains("1") | dd.str.contains("nan"))
+    ii = ~(dd.str.contains("1") | dd.str.contains("nan") | dd.str.contains("NA"))
     df = df.loc[ii, :]
 else:
     df = df.loc[df.Removed==0, :]
 
 print("Size after masking for maternal contamination:")
-print(df.shape)
+nmsg(df)
 
 df["icode"] = df[code]
 
@@ -62,6 +75,8 @@ exons_unique = set([])
 for ex in df.exon:
     if pd.isnull(ex):
         continue
+    if ":" in ex:
+        1/0
     for u in ex.split(":"):
         exons_unique.add(u)
 exons_unique = list(exons_unique)
@@ -104,8 +119,12 @@ for run,df1 in df.groupby("RNAid"):
             ase = (1 - np.sqrt(1 - 4*ase)) / 2
         ase = 0.5 - ase
 
+        genes = df2[gene_symbol].dropna().unique()
+        if len(genes) > 1 | any([":" in y for y in genes]):
+            1/0
+        gene = genes[0]
+
         # Prepare an output record
-        gene = df2[gene_symbol].iloc[0]
         anaf = df2.aveNonAltFreq.iloc[0]
         icr = df2.ICR.iloc[0]
         pweight = df2["Placenta_Weight"].iloc[0]
@@ -115,6 +134,10 @@ for run,df1 in df.groupby("RNAid"):
         batch = df2["Submission_date"].iloc[0].replace("-", "_")
         pctchrM_TPMsum = df2["PctchrM_TPMsum"].iloc[0]
         GeneClass_c1_lnc2_nc3 = df2["GeneClass_c1_lnc2_nc3"].iloc[0]
+
+        if len(df2.ID_mere.unique()) > 1:
+            1/0
+        momid = df2.ID_mere.iloc[0]
 
         xc = df2["icode"].value_counts()
         if xc.size != 1:
@@ -128,7 +151,7 @@ for run,df1 in df.groupby("RNAid"):
                    sum(z), df2.Sex.iloc[0], df2.Kid_Rank.iloc[0],
                    anaf, df2.cDNA_Library_type.iloc[0],
                    df2.MalariaInfectionElBashirCriteria.iloc[0],
-                   df2.ID_mere.iloc[0], pweight, blength, bweight,
+                   momid, pweight, blength, bweight,
                    rin, icr, ase, batch, pctchrM_TPMsum,
                    GeneClass_c1_lnc2_nc3])
 
@@ -160,4 +183,3 @@ cf = pd.read_csv("/nfs/kshedden/Beverly_Strassmann/Cohort_2018.csv.gz")
 
 # Save the file
 da.to_csv("imprint_full_%dpct_%d.csv" % (pct, method), index=None)
-
