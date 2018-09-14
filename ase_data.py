@@ -28,7 +28,7 @@ def get_data(method):
     allow_missing = ["Malaria", "PlacentaWeight", "RIN", "ICR", "GeneClass_c1_lnc2_nc3"]
     assert(pd.isnull(da.drop(allow_missing, axis=1)).sum().sum() == 0)
 
-    da = da.drop("Malaria", axis=1)
+    da = da.drop(["Malaria", "ICR"], axis=1)
 
     # KidRank = 1 means that the kid is second or later born
     da["KidRank"] = (da["KidRank"] >= 2).astype(np.int)

@@ -26,7 +26,7 @@ out = open("model_%d.txt" % method, "w")
 out.write("```\n")
 
 # Imprinting code
-for k in (0, 1, 2, 3):
+for kc in (0, 1, 2, 3):
 
     # If true, drop one kid from each sib pair to get unrelated samples
     for ks in False, True:
@@ -34,9 +34,9 @@ for k in (0, 1, 2, 3):
         # If true, include placenta weight in the model
         for kp in False, True:
 
-            if k < 3:
+            if kc < 3:
                 # MIG/PIG/CIG models
-                dx = da.loc[da.Icode == k, :]
+                dx = da.loc[da.Icode == kc, :]
             else:
                 # MIG+PIG model
                 dx = da.loc[da.Icode.isin([0, 1]), :]
@@ -67,7 +67,7 @@ for k in (0, 1, 2, 3):
                 ("Exon", "0 + C(Exon)"),
             ])
 
-            if k == 3:
+            if kc == 3:
                 # Extra terms for MIG+PIG model
                 fml += " + Pat"
                 fml = fml.replace("Pat", "Pat01")
@@ -99,7 +99,7 @@ for k in (0, 1, 2, 3):
                 # Center placenta weight if we are using it
                 dy["PlacentaWeight_cen"] = dy.PlacentaWeight - dy.PlacentaWeight.mean()
 
-            if k != 3:
+            if kc != 3:
                 model = BinomialBayesMixedGLM.from_formula(
                     fml, vc_fml, dy, vcp_p=3, fe_p=3)
 
@@ -146,7 +146,7 @@ for k in (0, 1, 2, 3):
             # Not sure this is needed
             #rslt = model.fit_map(minim_opts={"maxiter": 1000})
 
-            if k != 3:
+            if kc != 3:
                 model2 = BinomialBayesMixedGLM.from_formula(
                     fml, vc_fml, dy, vcp_p=3, fe_p=3)
             else:
@@ -161,7 +161,7 @@ for k in (0, 1, 2, 3):
 
             rslt2 = model2.fit_vb(verbose=False, scale_fe=True)
 
-            out.write(["Maternal", "Paternal", "Complex", "Maternal+Paternal"][k] + " imprinted genes:\n")
+            out.write(["Maternal", "Paternal", "Complex", "Maternal+Paternal"][kc] + " imprinted genes:\n")
             if ks:
                 out.write("Retaining one kid per sibship\n")
             out.write("%d people\n" % dy.Person.unique().size)
@@ -171,7 +171,7 @@ for k in (0, 1, 2, 3):
             out.write("%d exons\n" % dy.Exon.unique().size)
             out.write(rslt2.summary().as_text() + "\n\n")
 
-            if k > 2 or kp:
+            if kc > 2 or kp:
                 # Don't need predicted gene effects for these models
                 continue
 
@@ -186,7 +186,7 @@ for k in (0, 1, 2, 3):
                     for x in rr.index
                 ]
                 rr = rr.sort_values(by="Mean")
-                rr.to_csv("posterior_genes_%d_%d.csv" % (k, method))
+                rr.to_csv("posterior_genes_%d_%d.csv" % (kc, method))
 
                 sape = {}
                 for i in range(dx.shape[0]):
@@ -238,7 +238,7 @@ for k in (0, 1, 2, 3):
                 pf = pd.merge(
                     pf, dxx, left_on="Person", right_on="Person", how="left")
                 pf.to_csv(
-                    "person_sample_%d_%d.csv" % (k, method),
+                    "person_sample_%d_%d.csv" % (kc, method),
                     index=None,
                     float_format="%.5f")
 

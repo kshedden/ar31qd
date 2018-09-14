@@ -29,6 +29,10 @@ exon_symbol = "mergedExons_PolishGeneSelection"
 
 df = pd.read_csv(os.path.join(dpr, fname), delimiter="\t")
 
+# Exclude SNPs mapping to multiple genes
+df = df.loc[pd.notnull(df[gene_symbol]), :]
+df = df.loc[~df[gene_symbol].str.contains("[,;]"), :]
+
 df = df.rename(columns={"%chrM_TPMsum": "PctchrM_TPMsum"})
 df[gene_type] = pd.to_numeric(df[gene_type], errors='coerce')
 
@@ -52,10 +56,9 @@ df = df.loc[df[gene_type].isin([1, 2, 3]), :]
 print("Size after requiring gene_type in 1, 2, 3:")
 nmsg(df)
 
-
 if method == 0:
     dd = df.DiscardIf1_method4.astype(str)
-    ii = ~(dd.str.contains("1") | dd.str.contains("nan") | dd.str.contains("NA"))
+    ii = ~(dd.str.contains("1", regex=False) | dd.str.contains("nan", regex=False) | dd.str.contains("NA", regex=False))
     df = df.loc[ii, :]
 else:
     df = df.loc[df.Removed==0, :]
@@ -85,7 +88,7 @@ for run,df1 in df.groupby("RNAid"):
     for exon in exons_unique:
 
         # Get the data for one sample, one exon
-        df2 = df1.loc[df1.exon.str.contains(exon), :]
+        df2 = df1.loc[df1.exon.str.contains(exon, regex=False), :]
         if df2.shape[0] == 0:
             continue
 
