@@ -35,6 +35,10 @@ def get_data(method):
 
     da["Boy"] = (da.Sex == 1).astype(np.int)
 
+    # Convert units to kilograms
+    da.BirthWeight /= 1000
+    da.PlacentaWeight /= 1000
+
     # Save uncentered versions of these variables before centering
     da["Boy01"] = da.Boy.copy()
     da["Mat01"] = da.Mat.copy()

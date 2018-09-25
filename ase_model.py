@@ -16,10 +16,6 @@ method = int(sys.argv[1])
 
 da, genecode, exoncode = get_data(method)
 
-# Convert units to kilograms
-da.BirthWeight /= 1000
-da.PlacentaWeight /= 1000
-
 info = open("model_%d_info.csv" % method, "w")
 out = open("model_%d.txt" % method, "w")
 

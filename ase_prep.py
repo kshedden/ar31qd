@@ -33,7 +33,7 @@ df = pd.read_csv(os.path.join(dpr, fname), delimiter="\t")
 df = df.loc[pd.notnull(df[gene_symbol]), :]
 df = df.loc[~df[gene_symbol].str.contains("[,;]"), :]
 
-df = df.rename(columns={"%chrM_TPMsum": "PctchrM_TPMsum"})
+df = df.rename(columns={"X.chrM_TPMsum": "X_chrM_TPMsum"})
 df[gene_type] = pd.to_numeric(df[gene_type], errors='coerce')
 
 def nmsg(df):
@@ -134,7 +134,7 @@ for run,df1 in df.groupby("RNAid"):
         bweight = df2["Birth_Weight"].iloc[0]
         rin = df2["RIN"].iloc[0]
         batch = df2["Submission_date"].iloc[0].replace("-", "_")
-        pctchrM_TPMsum = df2["PctchrM_TPMsum"].iloc[0]
+        X_chrM_TPMsum = df2["X_chrM_TPMsum"].iloc[0]
         GeneClass_c1_lnc2_nc3 = df2["GeneClass_c1_lnc2_nc3"].iloc[0]
 
         if len(df2.ID_mere.unique()) > 1:
@@ -154,14 +154,14 @@ for run,df1 in df.groupby("RNAid"):
                    anaf, df2.cDNA_Library_type.iloc[0],
                    df2.MalariaInfectionElBashirCriteria.iloc[0],
                    momid, pweight, blength, bweight,
-                   rin, icr, ase, batch, pctchrM_TPMsum,
+                   rin, icr, ase, batch, X_chrM_TPMsum,
                    GeneClass_c1_lnc2_nc3])
 
 da = pd.DataFrame(da)
 da.columns = ["Person", "ID_F2", "Sample", "Run", "Exon", "Gene", "Icode", "Imprinted",
               "Nsnp", "Reads", "Sex", "KidRank", "AvgNonAltFreq", "Lib", "Malaria", "MomID",
               "PlacentaWeight", "BirthLength", "BirthWeight", "RIN", "ICR", "ASE", "Batch",
-              "PctchrM_TPMsum", "GeneClass_c1_lnc2_nc3"]
+              "X_chrM_TPMsum", "GeneClass_c1_lnc2_nc3"]
 
 #
 # Merge in some additional mother information
