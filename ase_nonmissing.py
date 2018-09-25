@@ -11,6 +11,9 @@ method = int(sys.argv[1])
 
 da, genecode, exoncode = get_data(method)
 
+# Ony keep MIGs and PIGs
+da = da.loc[da.icode <= 1, :]
+
 ps = da.loc[:, ["Person", "Sample"]].drop_duplicates()
 ps = list(zip(ps.Person, ps.Sample))
 
@@ -43,7 +46,6 @@ dr = dr.reset_index()
 
 dr["Mat"] = 1*(dr.Icode == 0)
 dr["Pat"] = 1*(dr.Icode == 1)
-dr["Complex"] = 1*(dr.Icode == 2)
 
 # Randomize
 #p = dr.Obs.mean()
@@ -53,7 +55,7 @@ out = open("nonmissing_%d.txt" % method, "w")
 out.write("```\n")
 
 rsltx = []
-for k in 0,1,2:
+for k in 0,1:
 
     dx = dr.loc[dr.Icode == k, :]
 
@@ -64,7 +66,7 @@ for k in 0,1,2:
     model = sm.genmod.BinomialBayesMixedGLM.from_formula(fml, vc_fml, dx, vcp_p=3, fe_p=3)
     rslt = model.fit_vb(verbose=True)
     rsltx.append(rslt)
-    out.write(["MIG:", "PIG:", "CIG:"][k] + "\n")
+    out.write(["MIG:", "PIG:"][k] + "\n")
     out.write("%d imprinting status observations (%d observed, %d missing)\n" %
               (dx.shape[0], dx.Obs.sum(), (1 - dx.Obs).sum()))
     out.write("%d distinct people\n" % dx.Person.unique().size)
@@ -73,8 +75,7 @@ for k in 0,1,2:
     out.write("%d distinct exons\n" % dx.Exon.unique().size)
     out.write(rslt.summary().as_text() + "\n\n")
 
-fml = "Obs ~ KidRank + C(Lib) + Boy + Mat + Pat"
-#fml = "Obs ~ 1"
+fml = "Obs ~ 0 + KidRank + C(Lib) + Boy + Mat + C(GeneClass)"
 vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
 model = sm.genmod.BinomialBayesMixedGLM.from_formula(fml, vc_fml, data=dr, vcp_p=3, fe_p=3)
