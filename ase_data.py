@@ -25,8 +25,12 @@ def get_data(method):
             exoncode[r.Exon] = 3
 
     # Only a few variables should have missing values
-    allow_missing = ["Malaria", "PlacentaWeight", "RIN", "ICR", "GeneClass_c1_lnc2_nc3"]
-    assert(pd.isnull(da.drop(allow_missing, axis=1)).sum().sum() == 0)
+    allow_missing = ["Malaria", "PlacentaWeight", "RIN", "ICR", "GeneClass_c1_lnc2_nc3", "AvgNonAltFreq"]
+    dm = pd.isnull(da.drop(allow_missing, axis=1)).sum(0)
+    if (dm > 0).any():
+        print("Unexpected missing values:")
+        print(dm[dm > 0])
+        raise ValueError("")
 
     da = da.drop(["Malaria", "ICR"], axis=1)
 

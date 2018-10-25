@@ -12,7 +12,7 @@ method = int(sys.argv[1])
 da, genecode, exoncode = get_data(method)
 
 # Ony keep MIGs and PIGs
-da = da.loc[da.icode <= 1, :]
+da = da.loc[da.Icode <= 1, :]
 
 ps = da.loc[:, ["Person", "Sample"]].drop_duplicates()
 ps = list(zip(ps.Person, ps.Sample))
@@ -35,6 +35,7 @@ dr["Obs"] = pd.notnull(dr.Imprinted).astype(np.float64)
 dr = dr.reset_index().set_index(["Person", "Sample"])
 dr.loc[:, "Boy"] = dr.Boy.fillna(value=dr.Boy.dropna().to_dict())
 dr.loc[:, "KidRank"] = dr.KidRank.fillna(value=dr.KidRank.dropna().to_dict())
+dr.loc[:, "BirthLength"] = dr.BirthLength.fillna(value=dr.BirthLength.dropna().to_dict())
 dr = dr.reset_index()
 
 # Fill missing for gene/exon characteristics
@@ -58,8 +59,12 @@ rsltx = []
 for k in 0,1:
 
     dx = dr.loc[dr.Icode == k, :]
+    dx = dx[["Obs", "KidRank", "Lib", "Boy", "GeneClass", "BirthLength", "Person", "Sample",
+             "Gene", "Exon"]]
+    dx = dx.dropna()
+    dx["BirthLength_cen"] = dx.BirthLength - dx.BirthLength.mean()
 
-    fml = "Obs ~ KidRank + C(Lib) + Boy + C(GeneClass)"
+    fml = "Obs ~ KidRank + C(Lib) + Boy + C(GeneClass) + BirthLength_cen"
     # fml = "Obs ~ 1"
     vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
@@ -75,7 +80,9 @@ for k in 0,1:
     out.write("%d distinct exons\n" % dx.Exon.unique().size)
     out.write(rslt.summary().as_text() + "\n\n")
 
-fml = "Obs ~ 0 + KidRank + C(Lib) + Boy + Mat + C(GeneClass)"
+x = dr.BirthLength.dropna()
+dr["BirthLength_cen"] = (dr.BirthLength - x.mean()) / x.std()
+fml = "Obs ~ KidRank + C(Lib) + Boy + Mat + C(GeneClass) + BirthLength_cen"
 vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
 model = sm.genmod.BinomialBayesMixedGLM.from_formula(fml, vc_fml, data=dr, vcp_p=3, fe_p=3)

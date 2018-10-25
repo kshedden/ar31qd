@@ -49,7 +49,7 @@ for kc in (0, 1, 2, 3):
                     else:
                         print("No multiple sibs for momid=%d" % mm)
 
-            fml = "Imprinted ~ AvgNonAltFreq + C(Lib) + Batch + Boy + KidRank + BirthLength_cen + BirthWeight_cen + RIN + PctchrM_TPMsum + C(GeneClass_c1_lnc2_nc3)"
+            fml = "Imprinted ~ AvgNonAltFreq + C(Lib) + Batch + Boy + KidRank + BirthLength_cen + RIN + X_chrM_TPMsum + C(GeneClass_c1_lnc2_nc3)"
 
             if kp:
                 # Add placenta weight to some models
@@ -223,8 +223,7 @@ for kc in (0, 1, 2, 3):
                 pf["Total"] = pf.Person_mean + pf.Sample_mean
 
                 vn = [
-                    "Person", "BirthWeight_cen", "BirthLength_cen", "RIN",
-                    "PctchrM_TPMsum"
+                    "Person", "BirthLength_cen", "RIN", "X_chrM_TPMsum"
                 ]
                 if kp:
                     vn.append("PlacentaWeight_cen")
