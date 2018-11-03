@@ -176,12 +176,5 @@ for x in "DateNaissance", "DOB_F1":
 da["MomAge"] = da.DateNaissance - da.DOB_F1
 da.MomAge = da.MomAge.dt.days.astype(np.float64)/365.25
 
-#
-# Merge in some longitudinal study variables
-#
-
-cf = pd.read_csv("/nfs/kshedden/Beverly_Strassmann/Cohort_2018.csv.gz")
-# Nothing here yet
-
 # Save the file
 da.to_csv("imprint_full_%dpct_%d.csv" % (pct, method), index=None)

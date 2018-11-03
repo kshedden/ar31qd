@@ -11,6 +11,19 @@ method = int(sys.argv[1])
 
 da, genecode, exoncode = get_data(method)
 
+#X_chrM_TPMsum
+
+xx = da[["Sample", "RIN"]].dropna().groupby(["Sample"]).agg({"RIN": lambda x: np.max(x) - np.min(x)})
+xx = xx.reset_index()
+xx = xx[xx.RIN > 0]
+1/0
+
+xx = da[["Sample", "Exon", "AvgNonAltFreq"]].dropna().groupby(["Sample", "Exon"]).agg({"AvgNonAltFreq": lambda x: np.max(x) - np.min(x)})
+xx = xx.reset_index()
+xx = xx[xx.AvgNonAltFreq > 0]
+
+1/0
+
 # Ony keep MIGs and PIGs
 da = da.loc[da.Icode <= 1, :]
 
@@ -60,11 +73,12 @@ for k in 0,1:
 
     dx = dr.loc[dr.Icode == k, :]
     dx = dx[["Obs", "KidRank", "Lib", "Boy", "GeneClass", "BirthLength", "Person", "Sample",
-             "Gene", "Exon"]]
+             "Gene", "Exon", "RIN", "AvgNonAltFreq", "X_chrM_TPMsum"]]
+    1/0
     dx = dx.dropna()
     dx["BirthLength_cen"] = dx.BirthLength - dx.BirthLength.mean()
 
-    fml = "Obs ~ KidRank + C(Lib) + Boy + C(GeneClass) + BirthLength_cen"
+    fml = "Obs ~ KidRank + C(Lib) + Boy + C(GeneClass) + BirthLength_cen + RIN + AvgNonAltFreq + X_chrM_TPMsum"
     # fml = "Obs ~ 1"
     vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
@@ -82,7 +96,7 @@ for k in 0,1:
 
 x = dr.BirthLength.dropna()
 dr["BirthLength_cen"] = (dr.BirthLength - x.mean()) / x.std()
-fml = "Obs ~ KidRank + C(Lib) + Boy + Mat + C(GeneClass) + BirthLength_cen"
+fml = "Obs ~ KidRank + C(Lib) + Boy + Mat + C(GeneClass) + BirthLength_cen + RIN + AvgNonAltFreq + X_chrM_TPMsum"
 vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
 model = sm.genmod.BinomialBayesMixedGLM.from_formula(fml, vc_fml, data=dr, vcp_p=3, fe_p=3)

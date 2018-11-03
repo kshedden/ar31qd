@@ -48,6 +48,7 @@ for kc in (0, 1, 2, 3):
                         dx = dx.loc[dx.Person != idx, :]
                     else:
                         print("No multiple sibs for momid=%d" % mm)
+                        print("%d kids found for this momid" % len(ii))
 
             fml = "Imprinted ~ AvgNonAltFreq + C(Lib) + Batch + Boy + KidRank + BirthLength_cen + RIN + X_chrM_TPMsum + C(GeneClass_c1_lnc2_nc3)"
 
@@ -139,9 +140,6 @@ for kc in (0, 1, 2, 3):
                     fe_p=3,
                     vcp_names=vcp_names)
 
-            # Not sure this is needed
-            #rslt = model.fit_map(minim_opts={"maxiter": 1000})
-
             if kc != 3:
                 model2 = BinomialBayesMixedGLM.from_formula(
                     fml, vc_fml, dy, vcp_p=3, fe_p=3)
@@ -165,77 +163,102 @@ for kc in (0, 1, 2, 3):
             out.write("%d imprinting calls\n" % dy.shape[0])
             out.write("%d genes\n" % dy.Gene.unique().size)
             out.write("%d exons\n" % dy.Exon.unique().size)
-            out.write(rslt2.summary().as_text() + "\n\n")
+            out.write(rslt2.summary().as_text() + "\n")
 
-            if kc > 2 or kp:
+            # Standardized parameters
+            ss = model2.exog.std(0)
+            ss[0] = 1
+            sp = pd.DataFrame({"Slopes": rslt2.fe_mean * ss,
+                              "SE": rslt2.fe_sd * ss})
+            sp.index = model2.exog_names
+            sp = sp.loc[:, ["Slopes", "SE"]]
+            out.write("\nStandardized parameters\n")
+            out.write(sp.to_string(float_format="%5.3f") + "\n\n")
+
+            if kc > 2 or kp == False or ks == False:
                 # Don't need predicted gene effects for these models
                 continue
 
-            if not ks:
-                # Save BLUPs
+            xx = model2.data.frame
+            xx = xx[["Gene", "GeneClass_c1_lnc2_nc3"]]
+            xx = xx.set_index("Gene")
+            xx = xx.to_dict()["GeneClass_c1_lnc2_nc3"]
 
-                rr = rslt2.random_effects("Gene")
-                rr = rr.sort_values(by="SD")
-                rr["N"] = [np.sum(dx.Gene == x[8:-1]) for x in rr.index]
-                rr["Crude"] = [
-                    dx.loc[dx.Gene == x[8:-1], "Imprinted"].mean()
-                    for x in rr.index
-                ]
-                rr = rr.sort_values(by="Mean")
-                rr.to_csv("posterior_genes_%d_%d.csv" % (kc, method))
+            rr = rslt2.random_effects("Gene")
+            rr = rr.sort_values(by="SD")
+            rr["N"] = [np.sum(dx.Gene == x[8:-1]) for x in rr.index]
+            rr["Crude"] = [
+                dx.loc[dx.Gene == x[8:-1], "Imprinted"].mean()
+                for x in rr.index
+            ]
 
-                sape = {}
-                for i in range(dx.shape[0]):
-                    x = dx.iloc[i, :]
-                    sape[x.Sample] = [x.Person, x.MomID]
+            rr.index = [x[8:-1] for x in rr.index]
+            pa = pd.Series(rslt2.fe_mean, index=model2.fep_names).to_dict()
+            rr["GeneClass"] = [xx.get(k) for k in rr.index]
+            rr.GeneClass = rr.GeneClass.astype(np.int)
+            rr["GeneClassEffect"] = 0
+            for k in (1, 2, 3):
+                a = "C(GeneClass_c1_lnc2_nc3)[T.%2.1f]" % k
+                if a in pa:
+                    ii = rr.GeneClass == k
+                    rr.GeneClassEffect[ii] = pa[a]
 
-                sa = rslt2.random_effects("Sample")
-                pr = rslt2.random_effects("Person")
-                sa = sa.reset_index()
-                sa["index"] = sa["index"].apply(lambda x: x[10:-1])
-                sa = sa.rename(columns={
-                    "index": "Sample",
-                    "Mean": "Sample_mean",
-                    "SD": "Sample_SD"
-                })
-                sa["Person"] = [
-                    sape[sa.iloc[i, :].Sample][0] for i in range(sa.shape[0])
-                ]
+            rr["TotalEffect"] = rr.Mean + rr.GeneClassEffect
+            rr = rr.sort_values(by="TotalEffect")
+            rr.to_csv("posterior_genes_%d_%d.csv" % (kc, method))
 
-                sa["MomID"] = [
-                    sape[sa.iloc[i, :].Sample][1] for i in range(sa.shape[0])
-                ]
-                sa["MomID"] = sa.MomID.apply(lambda x: str(x))
+            sape = {}
+            for i in range(dx.shape[0]):
+                x = dx.iloc[i, :]
+                sape[x.Sample] = [x.Person, x.MomID]
 
-                pr = pr.reset_index()
-                pr["index"] = pr["index"].apply(lambda x: np.int64(x[10:-1]))
-                pr = pr.rename(columns={
-                    "index": "Person",
-                    "Mean": "Person_mean",
-                    "SD": "Person_SD"
-                })
-                pf = pd.merge(pr, sa, left_on="Person", right_on="Person")
+            sa = rslt2.random_effects("Sample")
+            pr = rslt2.random_effects("Person")
+            sa = sa.reset_index()
+            sa["index"] = sa["index"].apply(lambda x: x[10:-1])
+            sa = sa.rename(columns={
+                "index": "Sample",
+                "Mean": "Sample_mean",
+                "SD": "Sample_SD"
+            })
+            sa["Person"] = [
+                sape[sa.iloc[i, :].Sample][0] for i in range(sa.shape[0])
+            ]
 
-                pf = pf[[
-                    "Person", "Sample", "MomID", "Person_mean", "Person_SD",
-                    "Sample_mean", "Sample_SD"
-                ]]
-                pf["Total"] = pf.Person_mean + pf.Sample_mean
+            sa["MomID"] = [
+                sape[sa.iloc[i, :].Sample][1] for i in range(sa.shape[0])
+            ]
+            sa["MomID"] = sa.MomID.apply(lambda x: str(x))
 
-                vn = [
-                    "Person", "BirthLength_cen", "RIN", "X_chrM_TPMsum"
-                ]
-                if kp:
-                    vn.append("PlacentaWeight_cen")
-                dxx = dy[vn]
-                dxx = dxx.groupby("Person").head(1)
-                dxx = dxx.reset_index()
-                pf = pd.merge(
-                    pf, dxx, left_on="Person", right_on="Person", how="left")
-                pf.to_csv(
-                    "person_sample_%d_%d.csv" % (kc, method),
-                    index=None,
-                    float_format="%.5f")
+            pr = pr.reset_index()
+            pr["index"] = pr["index"].apply(lambda x: np.int64(x[10:-1]))
+            pr = pr.rename(columns={
+                "index": "Person",
+                "Mean": "Person_mean",
+                "SD": "Person_SD"
+            })
+            pf = pd.merge(pr, sa, left_on="Person", right_on="Person")
+
+            pf = pf[[
+                "Person", "Sample", "MomID", "Person_mean", "Person_SD",
+                "Sample_mean", "Sample_SD"
+            ]]
+            pf["Total"] = pf.Person_mean + pf.Sample_mean
+
+            vn = [
+                "Person", "BirthLength_cen", "RIN", "X_chrM_TPMsum"
+            ]
+            if kp:
+                vn.append("PlacentaWeight_cen")
+            dxx = dy[vn]
+            dxx = dxx.groupby("Person").head(1)
+            dxx = dxx.reset_index()
+            pf = pd.merge(
+                pf, dxx, left_on="Person", right_on="Person", how="left")
+            pf.to_csv(
+                "person_sample_%d_%d.csv" % (kc, method),
+                index=None,
+                float_format="%.5f")
 
 out.write("```\n")
 out.close()
