@@ -55,4 +55,8 @@ def get_data(method):
     da.Pat -= da.Pat.mean()
     da.Cmp -= da.Cmp.mean()
 
+    # Fix the placenta weight for a twin birth
+    ii = da.Sample.isin(['5129_0', '5129_1'])
+    da.loc[ii, "PlacentaWeight"] /= 2
+
     return da, genecode, exoncode

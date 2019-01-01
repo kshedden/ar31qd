@@ -18,8 +18,10 @@ da, genecode, exoncode = get_data(method)
 
 info = open("model_%d_info.csv" % method, "w")
 out = open("model_%d.txt" % method, "w")
+log = open("model_%d_log.txt" % method, "w")
 
 out.write("```\n")
+log.write("```\n")
 
 # Imprinting code
 for kc in (0, 1, 2, 3):
@@ -29,6 +31,12 @@ for kc in (0, 1, 2, 3):
 
         # If true, include placenta weight in the model
         for kp in False, True:
+
+            log.write("Imprinting code: %d\n" % kc)
+            if ks:
+                log.write("Dropping all but one sibling from multi-sib families\n")
+            if kp:
+                log.write("Including PlacentaWeight in model\n")
 
             if kc < 3:
                 # MIG/PIG/CIG models
@@ -44,11 +52,15 @@ for kc in (0, 1, 2, 3):
                     if len(ii) == 2:
                         n0 = np.sum(dx.MomID == ii[0])
                         n1 = np.sum(dx.MomID == ii[1])
-                        idx = ii[1] if n0 > n1 else ii[0]
+                        idx = ii[0] if n1 > n0 else ii[1]
+                        m = dx.shape[0]
                         dx = dx.loc[dx.Person != idx, :]
+                        m -= dx.shape[0]
+                        log.write("Dropped %d rows for momid %d (dropping subject %d from sibs %s %s)\n" %
+                                  (m, mm, idx, ii[0], ii[1]))
                     else:
-                        print("No multiple sibs for momid=%d" % mm)
-                        print("%d kids found for this momid" % len(ii))
+                        log.write("No multiple sibs for momid=%d " % mm)
+                        log.write("(%d kid found for this momid)\n" % len(ii))
 
             fml = "Imprinted ~ AvgNonAltFreq + C(Lib) + Batch + Boy + KidRank + BirthLength_cen + RIN + X_chrM_TPMsum + C(GeneClass_c1_lnc2_nc3)"
 
@@ -76,7 +88,24 @@ for kc in (0, 1, 2, 3):
                 dy = dx
 
             # This is the final data set
+            m = dy.shape[0]
+            idm = pd.isnull(dy).sum(0)
             dy = dy.dropna()
+            m -= dy.shape[0]
+            if m > 0:
+                idm = idm[idm.values > 0]
+                log.write("Lost %d rows due to missing values\n" % m)
+                log.write("Missing values:\n")
+                log.write("%s\n" % idm.to_string())
+
+            log.write("Final counts:\n")
+            log.write("%d distinct people\n" % dy.Person.unique().size)
+            log.write("%d distinct mothers\n" % dy.MomID.unique().size)
+            log.write("%d distinct samples\n" % dy.Sample.unique().size)
+            log.write("%d imprinting calls\n" % dy.shape[0])
+            log.write("%d distinct genes\n" % dy.Gene.unique().size)
+            log.write("%d distinct exons\n" % dy.Exon.unique().size)
+            log.write("\n")
 
             # Create some centered variables
             dy["BirthLength_cen"] = dy.BirthLength - dy.BirthLength.mean()
@@ -159,6 +188,7 @@ for kc in (0, 1, 2, 3):
             if ks:
                 out.write("Retaining one kid per sibship\n")
             out.write("%d people\n" % dy.Person.unique().size)
+            out.write("%d mothers\n" % dy.MomID.unique().size)
             out.write("%d samples\n" % dy.Sample.unique().size)
             out.write("%d imprinting calls\n" % dy.shape[0])
             out.write("%d genes\n" % dy.Gene.unique().size)
@@ -261,6 +291,8 @@ for kc in (0, 1, 2, 3):
                 float_format="%.5f")
 
 out.write("```\n")
-out.close()
+log.write("```\n")
 
+out.close()
+log.close()
 info.close()
