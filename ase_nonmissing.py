@@ -11,18 +11,18 @@ method = int(sys.argv[1])
 
 da, genecode, exoncode = get_data(method)
 
-#X_chrM_TPMsum
+ii = pd.notnull(da.AvgNonAltFreq)
+da = da.loc[ii, :]
 
-xx = da[["Sample", "RIN"]].dropna().groupby(["Sample"]).agg({"RIN": lambda x: np.max(x) - np.min(x)})
-xx = xx.reset_index()
-xx = xx[xx.RIN > 0]
-1/0
-
-xx = da[["Sample", "Exon", "AvgNonAltFreq"]].dropna().groupby(["Sample", "Exon"]).agg({"AvgNonAltFreq": lambda x: np.max(x) - np.min(x)})
-xx = xx.reset_index()
-xx = xx[xx.AvgNonAltFreq > 0]
-
-1/0
+for mm in 1047, 196, 113:
+    ii = da.loc[da.MomID == mm, "Person"].unique()
+    if len(ii) == 2:
+        n0 = np.sum(da.MomID == ii[0])
+        n1 = np.sum(da.MomID == ii[1])
+        idx = ii[0] if n1 > n0 else ii[1]
+        m = da.shape[0]
+        da = da.loc[da.Person != idx, :]
+        m -= da.shape[0]
 
 # Ony keep MIGs and PIGs
 da = da.loc[da.Icode <= 1, :]
@@ -47,6 +47,9 @@ dr["Obs"] = pd.notnull(dr.Imprinted).astype(np.float64)
 # Fill missing for person/sample characteristics
 dr = dr.reset_index().set_index(["Person", "Sample"])
 dr.loc[:, "Boy"] = dr.Boy.fillna(value=dr.Boy.dropna().to_dict())
+dr.loc[:, "RIN"] = dr.KidRank.fillna(value=dr.RIN.dropna().to_dict())
+dr.loc[:, "AvgNonAltFreq"] = dr.KidRank.fillna(value=dr.AvgNonAltFreq.dropna().to_dict())
+dr.loc[:, "X_chrM_TPMsum"] = dr.KidRank.fillna(value=dr.X_chrM_TPMsum.dropna().to_dict())
 dr.loc[:, "KidRank"] = dr.KidRank.fillna(value=dr.KidRank.dropna().to_dict())
 dr.loc[:, "BirthLength"] = dr.BirthLength.fillna(value=dr.BirthLength.dropna().to_dict())
 dr = dr.reset_index()
@@ -74,16 +77,16 @@ for k in 0,1:
     dx = dr.loc[dr.Icode == k, :]
     dx = dx[["Obs", "KidRank", "Lib", "Boy", "GeneClass", "BirthLength", "Person", "Sample",
              "Gene", "Exon", "RIN", "AvgNonAltFreq", "X_chrM_TPMsum"]]
-    1/0
-    dx = dx.dropna()
+
+    assert(pd.isnull(dx).any().any() is not False)
+
     dx["BirthLength_cen"] = dx.BirthLength - dx.BirthLength.mean()
 
     fml = "Obs ~ KidRank + C(Lib) + Boy + C(GeneClass) + BirthLength_cen + RIN + AvgNonAltFreq + X_chrM_TPMsum"
-    # fml = "Obs ~ 1"
     vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
     model = sm.genmod.BinomialBayesMixedGLM.from_formula(fml, vc_fml, dx, vcp_p=3, fe_p=3)
-    rslt = model.fit_vb(verbose=True)
+    rslt = model.fit_vb(verbose=False)
     rsltx.append(rslt)
     out.write(["MIG:", "PIG:"][k] + "\n")
     out.write("%d imprinting status observations (%d observed, %d missing)\n" %

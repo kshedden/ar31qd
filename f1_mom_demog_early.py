@@ -4,7 +4,6 @@ Mean and SD of mother's HAZ when she was two years old.
 
 import numpy as np
 import pandas as pd
-from ase_data import get_data
 import os
 
 dk = pd.read_csv("imprint_full_10pct_0.csv")

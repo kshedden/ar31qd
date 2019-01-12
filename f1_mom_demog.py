@@ -12,6 +12,9 @@ dk = pd.read_csv("imprint_full_10pct_0.csv")
 df = pd.read_csv("/nfs/kshedden/Beverly_Strassmann/Cohort_2018.csv.gz")
 mom = pd.read_csv("/nfs/kshedden/Beverly_Strassmann/F2_OneTime_Shedden.txt.gz", delimiter="\t")
 
+dk2 = dk.loc[~dk.ID_F2.isin([5084, 5126, 5128, 5136, 5138, 5143, 5149]), :]
+mom_keep = mom.loc[mom.ID_F2.isin(dk2.ID_F2), "ID_mere"]
+
 # Data from very young ages is not relevant here
 df = df.loc[df.Age_Yrs > 5, :]
 
@@ -46,6 +49,9 @@ for vname in "Ht_Ave_18", "WT", "BMI_18":
     dp["pr"] = rslt.predict(exog=dp)
 
     dp.pr = resp_mean + resp_sd * dp.pr
+
+    dp = dp.loc[dp.ID.isin(mom_keep), :]
+
     print(vname)
     print("%.3f" % dp.pr.mean())
     print("%.3f" % (resp_sd * np.sqrt(rslt.scale + rslt.cov_re.iloc[0, 0])))

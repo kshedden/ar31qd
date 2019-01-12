@@ -1,5 +1,7 @@
 """
 Estimate the mean and standard deviation of the offspring HAZ at one year.
+
+n=47 for this
 """
 
 # ProcessMLE is not released yet, needs a recent master
@@ -56,6 +58,9 @@ if False:
 
 mod = sm.MixedLM.from_formula(fml, groups="ID_F2", data=kid)
 rslt = mod.fit()
+
+# Drop people not in other analyses.
+dk = dk.loc[~dk.ID_F2.isin([5084, 5126, 5128, 5138, 5143, 5149]), :]
 
 new_exog = kid.reset_index().copy()
 new_exog = new_exog.loc[new_exog.ID_F2.isin(dk.ID_F2), :]
