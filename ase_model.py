@@ -27,10 +27,10 @@ log.write("```\n")
 for kc in (0, 1, 2, 3):
 
     # If true, drop one kid from each sib pair to get unrelated samples
-    for ks in False, True:
+    for ks in [False, True]:
 
         # If true, include placenta weight in the model
-        for kp in False, True:
+        for kp in [False, True]:
 
             log.write("Imprinting code: %d\n" % kc)
             if ks:
@@ -40,10 +40,10 @@ for kc in (0, 1, 2, 3):
 
             if kc < 3:
                 # MIG/PIG/CIG models
-                dx = da.loc[da.Icode == kc, :]
+                dx = da.loc[da.Icode == kc, :].copy()
             else:
                 # MIG+PIG model
-                dx = da.loc[da.Icode.isin([0, 1]), :]
+                dx = da.loc[da.Icode.isin([0, 1]), :].copy()
 
             if ks:
                 # Mom IDs with multiple sibs: 1047, 196, 113
@@ -108,8 +108,8 @@ for kc in (0, 1, 2, 3):
             log.write("\n")
 
             # Create some centered variables
-            dy["BirthLength_cen"] = dy.BirthLength - dy.BirthLength.mean()
-            dy["BirthWeight_cen"] = dy.BirthWeight - dy.BirthWeight.mean()
+            dy.loc[:, "BirthLength_cen"] = dy.BirthLength - dy.BirthLength.mean()
+            dy.loc[:, "BirthWeight_cen"] = dy.BirthWeight - dy.BirthWeight.mean()
 
             # Write out gene-level info
             info.write("Genes:\n")
@@ -123,7 +123,7 @@ for kc in (0, 1, 2, 3):
 
             if kp:
                 # Center placenta weight if we are using it
-                dy["PlacentaWeight_cen"] = dy.PlacentaWeight - dy.PlacentaWeight.mean()
+                dy.loc[:, "PlacentaWeight_cen"] = dy.PlacentaWeight - dy.PlacentaWeight.mean()
 
             if kc != 3:
                 model = BinomialBayesMixedGLM.from_formula(
