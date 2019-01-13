@@ -46,20 +46,19 @@ dr["Obs"] = pd.notnull(dr.Imprinted).astype(np.float64)
 
 # Fill missing for person/sample characteristics
 dr = dr.reset_index().set_index(["Person", "Sample"])
-dr.loc[:, "Boy"] = dr.Boy.fillna(value=dr.Boy.dropna().to_dict())
-dr.loc[:, "RIN"] = dr.KidRank.fillna(value=dr.RIN.dropna().to_dict())
-dr.loc[:, "AvgNonAltFreq"] = dr.KidRank.fillna(value=dr.AvgNonAltFreq.dropna().to_dict())
-dr.loc[:, "X_chrM_TPMsum"] = dr.KidRank.fillna(value=dr.X_chrM_TPMsum.dropna().to_dict())
-dr.loc[:, "KidRank"] = dr.KidRank.fillna(value=dr.KidRank.dropna().to_dict())
-dr.loc[:, "BirthLength"] = dr.BirthLength.fillna(value=dr.BirthLength.dropna().to_dict())
+dr = dr.sort_index()
+for x in "Boy", "RIN", "AvgNonAltFreq", "X_chrM_TPMsum", "KidRank", "BirthLength":
+    dr.loc[:, x] = dr[x].fillna(value=dr[x].dropna().to_dict())
 dr = dr.reset_index()
 
 # Fill missing for gene/exon characteristics
 dr = dr.reset_index().set_index(["Gene", "Exon"])
+dr = dr.sort_index()
 dr.loc[:, "Icode"] = dr.Icode.fillna(value=dr.Icode.dropna().to_dict())
 dr.loc[:, "Lib"] = dr.Lib.fillna(value=dr.Lib.dropna().to_dict())
 dr.loc[:, "GeneClass"] = dr.GeneClass_c1_lnc2_nc3.fillna(value=dr.GeneClass_c1_lnc2_nc3.dropna().to_dict())
 dr = dr.reset_index()
+dr = dr.sort_index()
 
 dr["Mat"] = 1*(dr.Icode == 0)
 dr["Pat"] = 1*(dr.Icode == 1)
@@ -74,6 +73,7 @@ out.write("```\n")
 rsltx = []
 for k in 0,1:
 
+    print("k=%d" % k)
     dx = dr.loc[dr.Icode == k, :]
     dx = dx[["Obs", "KidRank", "Lib", "Boy", "GeneClass", "BirthLength", "Person", "Sample",
              "Gene", "Exon", "RIN", "AvgNonAltFreq", "X_chrM_TPMsum"]]
@@ -86,7 +86,7 @@ for k in 0,1:
     vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
     model = sm.genmod.BinomialBayesMixedGLM.from_formula(fml, vc_fml, dx, vcp_p=3, fe_p=3)
-    rslt = model.fit_vb(verbose=False)
+    rslt = model.fit_vb(verbose=False, scale_fe=True)
     rsltx.append(rslt)
     out.write(["MIG:", "PIG:"][k] + "\n")
     out.write("%d imprinting status observations (%d observed, %d missing)\n" %
@@ -102,8 +102,9 @@ dr["BirthLength_cen"] = (dr.BirthLength - x.mean()) / x.std()
 fml = "Obs ~ KidRank + C(Lib) + Boy + Mat + C(GeneClass) + BirthLength_cen + RIN + AvgNonAltFreq + X_chrM_TPMsum"
 vc_fml = {"Person": "0 + C(Person)", "Sample": "0 + C(Sample)", "Gene": "0 + C(Gene)", "Exon": "0 + C(Exon)"}
 
+print("Joint:")
 model = sm.genmod.BinomialBayesMixedGLM.from_formula(fml, vc_fml, data=dr, vcp_p=3, fe_p=3)
-rslt = model.fit_vb()
+rslt = model.fit_vb(scale_fe=True)
 out.write("Combined:\n")
 out.write(rslt.summary().as_text() + "\n")
 

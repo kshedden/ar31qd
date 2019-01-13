@@ -119,7 +119,7 @@ for kc in 0, 1, 3:
             else:
                 model2 = BinomialBayesMixedGLM(endog, exog, exog_vc, ident, vcp_p=3, fe_p=3, vcp_names=vcp_names)
 
-            rslt2 = model2.fit_vb(verbose=False)
+            rslt2 = model2.fit_vb(verbose=False, scale_fe=True)
             out.write("n=%d imprinting calls\n" % dy.shape[0])
             out.write("%d distinct samples\n" % dy.Sample.unique().size)
             out.write("%d distinct people\n" % dy.Person.unique().size)
